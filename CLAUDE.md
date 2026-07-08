@@ -14,7 +14,7 @@ This project uses [uv](https://github.com/astral-sh/uv). Never use `pip`,
 `python -m pip`, or bare `python` to install packages or run tools.
 
 ```bash
-uv sync --extra dev                    # install / sync deps (= make install)
+uv sync --extra dev                    # install / sync deps
 uv run pytest                          # run tests
 uv run ruff check src/ tests/
 uv run mypy src/
@@ -22,14 +22,6 @@ uv run python -m academy_cairn.flush   # drain the offline queue
 ```
 
 The venv lives at `.venv/`. Never activate it manually; `uv run` handles it.
-
-## Common make targets
-
-| Target | Command |
-|--------|---------|
-| `make install` | `uv sync --extra dev` |
-| `make test` | `uv run pytest` |
-| `make lint` | ruff + mypy |
 
 ## Code conventions
 

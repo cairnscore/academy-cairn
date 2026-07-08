@@ -35,7 +35,7 @@ scaffold → config → entity types → identity/keystore → client reads → 
 ### Task 1: Project scaffold (M0)
 
 **Files:**
-- Create: `pyproject.toml`, `src/academy_cairn/__init__.py`, `src/academy_cairn/py.typed`, `Makefile`, `tests/unit/__init__.py`, `tests/unit/test_smoke.py`
+- Create: `pyproject.toml`, `src/academy_cairn/__init__.py`, `src/academy_cairn/py.typed`, `tests/unit/__init__.py`, `tests/unit/test_smoke.py`
 - Create empty modules: `src/academy_cairn/{config,entity,identity,client,queue,rater,guard,mixin,peers}.py`
 
 **Interfaces:**

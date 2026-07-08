@@ -171,8 +171,8 @@ academy-cairn/
 ### M0 — scaffold
 
 `pyproject.toml` (hatchling, py ≥3.10 to match Academy), ruff + mypy strict config mirroring
-cairn-service's, empty modules, `make test/lint`.
-**Acceptance:** `uv sync && pytest` green on an empty test.
+cairn-service's, empty modules.
+**Acceptance:** `uv sync --extra dev && uv run pytest` green on an empty test.
 
 ### M1 — `CairnClient` + identity + config
 
