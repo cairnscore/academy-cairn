@@ -1,0 +1,71 @@
+import pickle
+
+import pytest
+
+from academy_cairn.peers import rated
+
+
+class FakeCairn:
+    def __init__(self):
+        self.enqueued = []
+
+        class C:
+            default_weight = 0.3
+
+        self.config = C()
+
+    def enqueue(self, e):
+        self.enqueued.append(e)
+
+
+class FakeAgentId:
+    uid = "peer1234abcd"
+    name = "analyzer"
+
+
+class FakeHandle:
+    """Stand-in for academy Handle: all calls funnel through action()."""
+
+    def __init__(self, fail=False):
+        self.agent_id = FakeAgentId()
+        self._fail = fail
+
+    async def action(self, name, /, *args, **kwargs):
+        if self._fail:
+            raise RuntimeError("peer down")
+        return f"{name}:ok"
+
+    def __reduce__(self):
+        return (FakeHandle, ())
+
+
+@pytest.mark.asyncio
+async def test_success_delegates_and_rates():
+    cairn = FakeCairn()
+    h = rated(FakeHandle(), cairn=cairn)
+    assert await h.action("analyze") == "analyze:ok"
+    assert len(cairn.enqueued) == 1
+    ev = cairn.enqueued[0]
+    assert ev.reviewee.external_id.endswith("/analyzer")
+    assert ev.reviewee.type == "agent"
+    assert ev.score == 0.75
+
+
+@pytest.mark.asyncio
+async def test_failure_rates_low_and_reraises():
+    cairn = FakeCairn()
+    h = rated(FakeHandle(fail=True), cairn=cairn)
+    with pytest.raises(RuntimeError):
+        await h.action("analyze")
+    assert cairn.enqueued[0].score == 0.2
+
+
+def test_passthrough_attribute():
+    h = rated(FakeHandle(), cairn=FakeCairn())
+    assert h.agent_id.name == "analyzer"
+
+
+def test_serialization_degrades_to_plain_handle():
+    h = rated(FakeHandle(), cairn=FakeCairn())
+    restored = pickle.loads(pickle.dumps(h))
+    assert isinstance(restored, FakeHandle)  # not a RatedHandle
