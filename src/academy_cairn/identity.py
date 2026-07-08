@@ -1,6 +1,7 @@
 """Reviewer identity strings and the on-disk claim-once key store."""
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 
@@ -37,5 +38,7 @@ class KeyStore:
     def save(self, slug: str, key: str) -> None:
         self._dir.mkdir(parents=True, exist_ok=True)
         path = self._path(slug)
-        path.write_text(key)
-        path.chmod(0o600)
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as fh:
+            fh.write(key)
+        path.chmod(0o600)  # ensure 0600 even if the file pre-existed with looser mode
