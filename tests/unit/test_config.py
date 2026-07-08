@@ -1,4 +1,3 @@
-from pathlib import Path
 from academy_cairn.config import CairnConfig
 
 
