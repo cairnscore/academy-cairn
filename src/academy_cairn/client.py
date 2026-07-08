@@ -42,8 +42,12 @@ class CairnClient:
         await self._http.aclose()
 
     def enqueue(self, event: ScoreEvent) -> None:
-        if self._queue is not None:
+        if self._queue is None:
+            return
+        try:
             self._queue.enqueue(event)
+        except Exception as exc:  # fail-open
+            logger.debug("cairn enqueue failed: %s", exc)
 
     async def flush(self) -> int:
         if self._queue is None or self.config.offline:

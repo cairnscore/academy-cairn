@@ -1,6 +1,6 @@
 import pytest
 
-from academy_cairn.entity import Reading
+from academy_cairn.entity import EntityRef, Reading
 from academy_cairn.guard import CairnTrustError, TrustPolicy, cairn_guarded
 
 
@@ -75,3 +75,70 @@ def test_composes_under_action_marker():
     fetch._agent_method_type = "action"  # @action would set this on the wrapper
     assert fetch._agent_method_type == "action"
     assert fetch.__name__ == "fetch"  # functools.wraps preserved identity
+
+
+class CallableIdFromAgent:
+    def __init__(self, cairn): self.cairn = cairn
+
+    @cairn_guarded(
+        type="data_source",
+        id_from=lambda self, url: EntityRef(type="data_source", external_id=url),
+    )
+    async def fetch(self, url: str) -> str:
+        return "data"
+
+
+@pytest.mark.asyncio
+async def test_id_from_callable_resolves_ref():
+    agent = CallableIdFromAgent(FakeCairn(Reading.no_data()))
+    assert await agent.fetch(url="https://a/v1") == "data"
+    assert len(agent.cairn.enqueued) == 1
+    assert agent.cairn.enqueued[0].reviewee.external_id == "https://a/v1"
+
+
+class BadIdFromAgent:
+    def __init__(self, cairn): self.cairn = cairn
+
+    @cairn_guarded(type="data_source", id_from="does_not_exist")
+    async def fetch(self, url: str) -> str:
+        return "data"
+
+
+@pytest.mark.asyncio
+async def test_id_from_resolution_failure_fails_open():
+    agent = BadIdFromAgent(FakeCairn(Reading.no_data()))
+    assert await agent.fetch(url="https://a/v1") == "data"
+    assert agent.cairn.enqueued == []
+
+
+class RaisingEnqueueCairn(FakeCairn):
+    def enqueue(self, event):
+        super().enqueue(event)
+        raise OSError("disk full")
+
+
+class RaisingEnqueueAgent:
+    def __init__(self, cairn): self.cairn = cairn
+
+    @cairn_guarded(type="data_source", id_from="url")
+    async def fetch(self, url: str) -> str:
+        return "data"
+
+    @cairn_guarded(type="data_source", id_from="url")
+    async def boom(self, url: str) -> str:
+        raise ValueError("kaboom")
+
+
+@pytest.mark.asyncio
+async def test_failing_enqueue_does_not_break_success():
+    agent = RaisingEnqueueAgent(RaisingEnqueueCairn(Reading.no_data()))
+    assert await agent.fetch(url="https://a/v1") == "data"
+    assert len(agent.cairn.enqueued) == 1
+
+
+@pytest.mark.asyncio
+async def test_failing_enqueue_does_not_mask_original_exception():
+    agent = RaisingEnqueueAgent(RaisingEnqueueCairn(Reading.no_data()))
+    with pytest.raises(ValueError, match="kaboom"):
+        await agent.boom(url="https://a/v1")
+    assert len(agent.cairn.enqueued) == 1

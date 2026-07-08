@@ -108,28 +108,34 @@ def cairn_guarded(
             except Exception as exc:
                 if cairn is not None and ref is not None and rate:
                     w = weight if weight is not None else cairn.config.default_weight
+                    try:
+                        cairn.enqueue(
+                            rate_outcome(
+                                ref,
+                                success=False,
+                                elapsed_s=time.monotonic() - start,
+                                exc=exc,
+                                weight=w,
+                                context=context,
+                            )
+                        )
+                    except Exception as enqueue_exc:  # fail-open: never mask exc
+                        logger.debug("cairn enqueue failed open: %s", enqueue_exc)
+                raise
+            if cairn is not None and ref is not None and rate:
+                w = weight if weight is not None else cairn.config.default_weight
+                try:
                     cairn.enqueue(
                         rate_outcome(
                             ref,
-                            success=False,
+                            success=True,
                             elapsed_s=time.monotonic() - start,
-                            exc=exc,
                             weight=w,
                             context=context,
                         )
                     )
-                raise
-            if cairn is not None and ref is not None and rate:
-                w = weight if weight is not None else cairn.config.default_weight
-                cairn.enqueue(
-                    rate_outcome(
-                        ref,
-                        success=True,
-                        elapsed_s=time.monotonic() - start,
-                        weight=w,
-                        context=context,
-                    )
-                )
+                except Exception as enqueue_exc:  # fail-open
+                    logger.debug("cairn enqueue failed open: %s", enqueue_exc)
             return result
 
         return wrapper
