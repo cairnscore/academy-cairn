@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any, cast
 
 import httpx
@@ -9,6 +10,7 @@ import httpx
 from .config import CairnConfig
 from .entity import EntityRef, Reading, ScoreEvent
 from .identity import identity_slug
+from .queue import ScoreQueue
 
 logger = logging.getLogger("academy_cairn")
 
@@ -22,6 +24,7 @@ class CairnClient:
         uid: str,
         key_store: Any,
         transport: httpx.AsyncBaseTransport | None = None,
+        queue_path: Path | None = None,
     ) -> None:
         self.config = config
         self._reviewer_id = reviewer_id
@@ -33,9 +36,19 @@ class CairnClient:
             timeout=config.timeout_s,
             transport=transport,
         )
+        self._queue = ScoreQueue(queue_path) if queue_path is not None else None
 
     async def aclose(self) -> None:
         await self._http.aclose()
+
+    def enqueue(self, event: ScoreEvent) -> None:
+        if self._queue is not None:
+            self._queue.enqueue(event)
+
+    async def flush(self) -> int:
+        if self._queue is None or self.config.offline:
+            return 0
+        return await self._queue.flush(self.submit_batch)
 
     async def get_score(self, ref: EntityRef) -> Reading:
         if self.config.offline:
