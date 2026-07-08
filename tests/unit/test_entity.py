@@ -1,5 +1,9 @@
 from academy_cairn.entity import (
-    EntityRef, Reading, ScoreEvent, agent_entity, snake_case,
+    EntityRef,
+    Reading,
+    ScoreEvent,
+    agent_entity,
+    snake_case,
 )
 
 
