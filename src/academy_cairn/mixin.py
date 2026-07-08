@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import socket
 from typing import Any
@@ -77,6 +78,8 @@ class CairnAgentMixin:
     async def agent_on_shutdown(self) -> None:
         if self._cairn_flush_task is not None:
             self._cairn_flush_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._cairn_flush_task
         if self.cairn is not None:
             await self.cairn.flush()
             await self.cairn.aclose()

@@ -31,3 +31,32 @@ async def test_disabled_config_yields_no_client():
     # startup with disabled config leaves self.cairn None and does not raise
     await CairnAgentMixin.agent_on_startup(m)
     assert m.cairn is None
+
+
+@pytest.mark.asyncio
+async def test_disabled_shutdown_is_safe(tmp_path):
+    m = CairnAgentMixin()
+    m._cairn_config = CairnConfig(enabled=False, key_dir=tmp_path)
+    m.agent_id = type("A", (), {"uid": "u", "name": "n"})()
+    await CairnAgentMixin.agent_on_startup(m)
+    assert m.cairn is None
+    await CairnAgentMixin.agent_on_shutdown(m)
+    assert m.cairn is None
+
+
+@pytest.mark.asyncio
+async def test_enabled_offline_startup_shutdown_lifecycle(tmp_path):
+    m = CairnAgentMixin()
+    m._cairn_config = CairnConfig(enabled=True, offline=True, key_dir=tmp_path)
+    m.agent_id = type("A", (), {"uid": "uid00000000", "name": "triage"})()
+    await CairnAgentMixin.agent_on_startup(m)
+    assert m.cairn is not None
+    assert m._cairn_flush_task is None
+    await CairnAgentMixin.agent_on_shutdown(m)
+
+
+@pytest.mark.asyncio
+async def test_discover_disabled_returns_empty():
+    m = CairnAgentMixin()
+    assert m.cairn is None
+    assert await m.discover("q") == []
