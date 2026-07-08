@@ -266,6 +266,22 @@ serialization round-trip yields a plain working handle.
   early move: open an issue on `academy-extensions` proposing per-integration extras, to learn
   whether that channel is viable at all.
 
+## Known limitations (v1)
+
+- **Drop-on-hard-failure during flush (deferred, tracked for M5).** `client.flush()` drives
+  `ScoreQueue.flush` with the fail-open `submit_batch`, which swallows every error and returns
+  normally. So a flush that hits a *hard* network failure (connection refused, 5xx — as opposed
+  to a timeout) marks the batch as delivered and drops it, giving at-most-once rather than
+  at-least-once delivery for that case. The `CAIRN_OFFLINE=1` path is unaffected (it no-ops flush
+  and retains the queue), so the true no-network case never loses events; only the
+  online-but-transiently-failing case is affected. The spec's stance is deliberately mixed —
+  "at-least-once accepted" *and* "on timeout treat as submitted (don't double-count)" — so the
+  correct fix distinguishes timeouts (drop, per spec) from hard failures (retain + re-flush). This
+  is intentionally deferred to be designed against real failure-rate data from the M5 Argus soak.
+  (Whole-branch review finding "I3".) The other four review findings — flush not fail-open,
+  concurrent-enqueue loss, a non-functional flush CLI, and a non-injective `identity_slug` — were
+  fixed in v1.
+
 ## Testing & verification strategy
 
 - **Unit:** everything through `httpx.MockTransport`; no network, no Academy runtime needed
