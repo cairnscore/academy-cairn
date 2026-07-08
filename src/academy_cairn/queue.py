@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import logging
+import os
+import tempfile
 from pathlib import Path
 from typing import Awaitable, Callable
 
@@ -43,12 +45,27 @@ class ScoreQueue:
         return events
 
     def _rewrite(self, remaining: list[ScoreEvent]) -> None:
-        if not remaining:
-            self._path.write_text("")
-            return
-        self._path.write_text(
-            "\n".join(e.model_dump_json(exclude_none=True) for e in remaining) + "\n"
+        content = (
+            ""
+            if not remaining
+            else "\n".join(
+                e.model_dump_json(exclude_none=True) for e in remaining
+            )
+            + "\n"
         )
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp_path = tempfile.mkstemp(dir=self._path.parent)
+        try:
+            with os.fdopen(fd, "w") as fh:
+                fh.write(content)
+                fh.flush()
+            os.replace(tmp_path, self._path)
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except FileNotFoundError:
+                pass
+            raise
 
     async def flush(self, submit_batch: SubmitBatch) -> int:
         pending = self.read_all()
