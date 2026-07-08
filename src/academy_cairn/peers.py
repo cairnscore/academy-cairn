@@ -1,11 +1,17 @@
 """rated(handle): score peer agents from Handle invocation outcomes."""
 from __future__ import annotations
 
+import inspect
+import logging
 import time
 from typing import Any
 
 from .entity import EntityRef, agent_entity
 from .rater import rate_outcome
+
+logger = logging.getLogger("academy_cairn")
+
+_MISSING = object()
 
 
 class RatedHandle:
@@ -34,29 +40,45 @@ class RatedHandle:
         try:
             result = await handle.action(name, *args, **kwargs)
         except Exception as exc:
+            try:
+                cairn.enqueue(
+                    rate_outcome(
+                        ref,
+                        success=False,
+                        elapsed_s=time.monotonic() - start,
+                        exc=exc,
+                        weight=weight,
+                    )
+                )
+            except Exception as enqueue_exc:  # fail-open: never mask exc
+                logger.debug("cairn enqueue failed open: %s", enqueue_exc)
+            raise
+        try:
             cairn.enqueue(
                 rate_outcome(
                     ref,
-                    success=False,
+                    success=True,
                     elapsed_s=time.monotonic() - start,
-                    exc=exc,
                     weight=weight,
                 )
             )
-            raise
-        cairn.enqueue(
-            rate_outcome(
-                ref,
-                success=True,
-                elapsed_s=time.monotonic() - start,
-                weight=weight,
-            )
-        )
+        except Exception as enqueue_exc:  # fail-open
+            logger.debug("cairn enqueue failed open: %s", enqueue_exc)
         return result
 
-    def __getattr__(self, item: str) -> Any:
-        # non-invocation attributes pass through unwrapped
-        return getattr(object.__getattribute__(self, "_handle"), item)
+    def __getattr__(self, name: str) -> Any:
+        handle = object.__getattribute__(self, "_handle")
+        if inspect.getattr_static(handle, name, _MISSING) is _MISSING:
+            # Not a real attribute -> Academy treats it as a remote action
+            # name. Route through the rated action path so attribute-style
+            # calls are scored.
+            async def rated_call(*args: Any, **kwargs: Any) -> Any:
+                return await self.action(name, *args, **kwargs)
+
+            return rated_call
+        # Real attribute/method (agent_id, ping, shutdown, ...) -> pass
+        # through unwrapped.
+        return getattr(handle, name)
 
     def __reduce__(self) -> tuple[Any, tuple[Any, ...]]:
         # accidental serialization degrades to the plain inner handle

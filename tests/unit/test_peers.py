@@ -69,3 +69,36 @@ def test_serialization_degrades_to_plain_handle():
     h = rated(FakeHandle(), cairn=FakeCairn())
     restored = pickle.loads(pickle.dumps(h))
     assert isinstance(restored, FakeHandle)  # not a RatedHandle
+
+
+@pytest.mark.asyncio
+async def test_attribute_style_call_is_rated():
+    cairn = FakeCairn()
+    h = rated(FakeHandle(), cairn=cairn)
+    result = await h.analyze("data")
+    assert result == "analyze:ok"
+    assert len(cairn.enqueued) == 1
+    ev = cairn.enqueued[0]
+    assert ev.reviewee.type == "agent"
+    assert ev.reviewee.external_id.startswith("agent://academy/")
+    assert ev.reviewee.external_id.endswith("/analyzer")
+
+
+def test_real_attribute_passes_through_and_does_not_rate():
+    cairn = FakeCairn()
+    h = rated(FakeHandle(), cairn=cairn)
+    assert h.agent_id.name == "analyzer"
+    assert cairn.enqueued == []
+
+
+class FailingCairn(FakeCairn):
+    def enqueue(self, e):
+        raise RuntimeError("enqueue exploded")
+
+
+@pytest.mark.asyncio
+async def test_enqueue_failure_does_not_mask_peer_exception():
+    cairn = FailingCairn()
+    h = rated(FakeHandle(fail=True), cairn=cairn)
+    with pytest.raises(RuntimeError, match="peer down"):
+        await h.action("analyze")
