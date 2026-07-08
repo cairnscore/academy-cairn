@@ -1,6 +1,7 @@
 """Reviewer identity strings and the on-disk claim-once key store."""
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 from pathlib import Path
@@ -17,7 +18,8 @@ def agent_name_from(name: str | None, uid: str) -> str:
 def identity_slug(reviewer_id: str) -> str:
     body = reviewer_id.replace("agent://", "")
     slug = re.sub(r"[^a-zA-Z0-9]+", "_", body).strip("_").lower()
-    return slug
+    digest = hashlib.sha256(reviewer_id.encode()).hexdigest()[:8]
+    return f"{slug}_{digest}"
 
 
 class KeyStore:

@@ -18,7 +18,18 @@ def test_agent_name_fallback():
 
 
 def test_identity_slug():
-    assert identity_slug("agent://academy/argus/triage") == "academy_argus_triage"
+    slug = identity_slug("agent://academy/argus/triage")
+    assert slug.startswith("academy_argus_triage_")
+    suffix = slug[len("academy_argus_triage_") :]
+    assert len(suffix) == 8
+    assert suffix == suffix.lower()
+    assert all(c in "0123456789abcdef" for c in suffix)
+
+
+def test_identity_slug_is_injective():
+    assert identity_slug("agent://academy/ns/Log-Watcher") != identity_slug(
+        "agent://academy/ns/log_watcher"
+    )
 
 
 def test_keystore_roundtrip_and_perms(tmp_path):

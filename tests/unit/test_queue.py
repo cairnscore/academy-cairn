@@ -50,3 +50,22 @@ async def test_flush_keeps_events_when_submit_fails(tmp_path):
     n = await q.flush(failing_submit)
     assert n == 0
     assert len(q.read_all()) == 1  # nothing lost on failure
+
+
+@pytest.mark.asyncio
+async def test_flush_does_not_clobber_concurrent_enqueue_during_await(tmp_path):
+    q = ScoreQueue(tmp_path / "q.jsonl")
+    for i in range(3):
+        q.enqueue(_event(i))
+    new_event = _event(999)
+
+    async def submit_and_enqueue(events):
+        # simulates another coroutine calling cairn.enqueue() while this
+        # chunk's network await is in flight.
+        q.enqueue(new_event)
+
+    n = await q.flush(submit_and_enqueue)
+    assert n == 3  # the original 3 events were acked
+    remaining = q.read_all()
+    assert new_event in remaining  # concurrently-enqueued event survives
+    assert len(remaining) == 1

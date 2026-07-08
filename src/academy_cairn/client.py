@@ -25,12 +25,13 @@ class CairnClient:
         key_store: Any,
         transport: httpx.AsyncBaseTransport | None = None,
         queue_path: Path | None = None,
+        api_key: str | None = None,
     ) -> None:
         self.config = config
         self._reviewer_id = reviewer_id
         self._uid = uid
         self._keys = key_store
-        self._api_key: str | None = None
+        self._api_key: str | None = api_key
         self._http = httpx.AsyncClient(
             base_url=config.base_url,
             timeout=config.timeout_s,
@@ -52,7 +53,11 @@ class CairnClient:
     async def flush(self) -> int:
         if self._queue is None or self.config.offline:
             return 0
-        return await self._queue.flush(self.submit_batch)
+        try:
+            return await self._queue.flush(self.submit_batch)
+        except Exception as exc:  # fail-open
+            logger.debug("cairn flush failed: %s", exc)
+            return 0
 
     async def get_score(self, ref: EntityRef) -> Reading:
         if self.config.offline:

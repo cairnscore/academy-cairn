@@ -80,3 +80,25 @@ async def test_writes_fail_open(tmp_path):
     client = make_client(handler, tmp_path)
     await client.submit(_event())  # must not raise
     await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_client_flush_fails_open_on_queue_error(tmp_path):
+    def handler(req):
+        return httpx.Response(200, json={"count": 0, "reviewees": []})
+    client = CairnClient(
+        CairnConfig(),
+        reviewer_id="agent://academy/test/agent",
+        uid="uid00000000",
+        key_store=KeyStore(tmp_path / "keys", host="node01"),
+        transport=httpx.MockTransport(handler),
+        queue_path=tmp_path / "queue" / "q.jsonl",
+    )
+
+    async def broken_flush(_submit_batch):
+        raise OSError("disk full")
+
+    client._queue.flush = broken_flush  # type: ignore[method-assign]
+    n = await client.flush()
+    assert n == 0  # fail-open: no raise
+    await client.aclose()
