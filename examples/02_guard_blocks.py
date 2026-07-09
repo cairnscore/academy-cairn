@@ -69,6 +69,8 @@ async def main() -> None:
         r = await read.get_score(EntityRef(type="data_source", external_id=url))
         print(f"  {label:8s} trust {bar(r.composite_score)} {r.composite_score:.2f} "
               f"(evidence {r.confidence:.2f})")
+        if r.profile_url:
+            print(f"           inspect {r.profile_url}")
 
     # Phase 2 — a strict agent acts on those reputations.
     print("\nA strict agent (block below 0.5 trust) tries each source:\n")

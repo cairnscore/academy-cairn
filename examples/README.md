@@ -60,10 +60,13 @@ Before any interactions:
 After 8 good interactions:
   trust    ███████████░░░░░░░░░ 0.56
   evidence █████████░░░░░░░░░░░ 0.44
+  inspect  https://cairnscore.ai/p/data_source/https%3A%2F%2Fweather-api.demo.example%2F083b3f0a
 ```
 
 The evidence bar rising off zero is the signal: the source now has a track
-record built from real outcomes.
+record built from real outcomes. Each read also carries a `profile_url` — open
+it to see the entity's page on cairnscore.ai (its score history, per-dimension
+breakdown, and the individual rating events).
 
 ## 2. Reputations diverge, and the guard acts
 
@@ -76,7 +79,9 @@ on_low="block")`) tries to use each one:
 ```
 After 8 interactions each:
   reliable trust ███████████░░░░░░░░░ 0.56 (evidence 0.44)
+           inspect https://cairnscore.ai/p/data_source/https%3A%2F%2Freliable-api.demo.example%2F...
   flaky    trust █████████░░░░░░░░░░░ 0.43 (evidence 0.44)
+           inspect https://cairnscore.ai/p/data_source/https%3A%2F%2Fflaky-api.demo.example%2F...
 
 A strict agent (block below 0.5 trust) tries each source:
   reliable   ✅ allowed
@@ -99,7 +104,9 @@ time. A coordinator delegates work to a solid analyzer and a flaky worker:
 ```
 Peer reputations (from real invocation outcomes):
   analyzer      ███████████░░░░░░░░░ 0.56 (evidence 0.44)
+                inspect https://cairnscore.ai/a/academy/demo/analyzer-7cc517
   flaky-worker  █████████░░░░░░░░░░░ 0.46 (evidence 0.44)
+                inspect https://cairnscore.ai/a/academy/demo/flaky-worker-7cc517
 
 The coordinator now knows to route work to the 'analyzer' — earned, not assumed.
 ```

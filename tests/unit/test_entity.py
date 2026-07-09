@@ -10,6 +10,18 @@ from academy_cairn.entity import (
 def test_reading_no_data():
     r = Reading.no_data()
     assert (r.composite_score, r.confidence, r.last_updated) == (0.5, 0.0, None)
+    assert r.profile_url is None
+
+
+def test_reading_captures_profile_url():
+    r = Reading.model_validate(
+        {
+            "composite_score": 0.8,
+            "confidence": 0.5,
+            "profile_url": "https://cairnscore.ai/p/data_source/https%3A%2F%2Fa",
+        }
+    )
+    assert r.profile_url == "https://cairnscore.ai/p/data_source/https%3A%2F%2Fa"
 
 
 def test_score_event_payload_drops_none():

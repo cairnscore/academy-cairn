@@ -18,6 +18,7 @@ class Reading(BaseModel):
     composite_score: float
     confidence: float
     last_updated: str | None = None
+    profile_url: str | None = None  # Cairn web page for this entity, if known
 
     @classmethod
     def no_data(cls) -> "Reading":

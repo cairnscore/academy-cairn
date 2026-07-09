@@ -83,6 +83,8 @@ async def main() -> None:
         scores[label] = r.composite_score
         print(f"  {label:13s} {bar(r.composite_score)} {r.composite_score:.2f} "
               f"(evidence {r.confidence:.2f})")
+        if r.profile_url:
+            print(f"                inspect {r.profile_url}")
 
     best = max(scores, key=scores.get)
     print(f"\nThe coordinator now knows to route work to the {best!r} — "

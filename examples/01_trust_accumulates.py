@@ -53,8 +53,10 @@ async def main() -> None:
     after = await read.get_score(ref)
     print("\nAfter 8 good interactions:")
     print(f"  trust    {bar(after.composite_score)} {after.composite_score:.2f}")
-    print(f"  evidence {bar(after.confidence)} {after.confidence:.2f}\n")
-    print("The source earned a track record from what actually happened.")
+    print(f"  evidence {bar(after.confidence)} {after.confidence:.2f}")
+    if after.profile_url:
+        print(f"  inspect  {after.profile_url}")
+    print("\nThe source earned a track record from what actually happened.")
 
     await read.aclose()
 
