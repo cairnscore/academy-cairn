@@ -102,3 +102,26 @@ async def test_enqueue_failure_does_not_mask_peer_exception():
     h = rated(FakeHandle(fail=True), cairn=cairn)
     with pytest.raises(RuntimeError, match="peer down"):
         await h.action("analyze")
+
+
+@pytest.mark.asyncio
+async def test_rated_with_agent_resolves_client(monkeypatch):
+    cairn = FakeCairn()
+    monkeypatch.setattr("academy_cairn.peers.ensure_client", lambda agent: cairn)
+    h = rated(FakeHandle(), agent=object())
+    assert await h.action("analyze") == "analyze:ok"
+    assert len(cairn.enqueued) == 1
+
+
+def test_rated_requires_cairn_or_agent():
+    with pytest.raises(TypeError):
+        rated(FakeHandle())
+
+
+@pytest.mark.asyncio
+async def test_rated_none_client_delegates_without_rating(monkeypatch):
+    # agent= resolves to None (trust disabled) -> delegate the call, don't rate,
+    # and don't crash.
+    monkeypatch.setattr("academy_cairn.peers.ensure_client", lambda agent: None)
+    h = rated(FakeHandle(), agent=object())
+    assert await h.action("analyze") == "analyze:ok"

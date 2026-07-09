@@ -1,10 +1,10 @@
 """Shared setup for the academy-cairn demos.
 
 These demos run *real* Academy agents on Academy's in-process ``LocalExchange``
-(no external services beyond Cairn itself). Each agent mixes in
-``CairnAgentMixin``, so ``self.cairn`` is created, keyed, and flushed for you
-across the agent lifecycle — you only add the mixin and a ``@cairn_guarded``
-line, exactly as you would in production.
+(no external services beyond Cairn itself). The agents are ordinary Academy
+agents; the only trust-specific code is a ``@cairn_guarded`` decorator (or
+``rated(..., agent=self)``), which provisions a Cairn client from the agent's
+identity on first use and flushes it on shutdown — no base class required.
 
 Point the demos at any Cairn deployment by setting ``CAIRN_BASE_URL`` (defaults
 to the hosted service at https://api.cairnscore.ai). Set ``CAIRN_NAMESPACE`` to

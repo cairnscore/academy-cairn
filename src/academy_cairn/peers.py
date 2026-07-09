@@ -7,6 +7,7 @@ import time
 from typing import Any
 
 from .entity import EntityRef, agent_entity
+from .provision import ensure_client
 from .rater import rate_outcome
 
 logger = logging.getLogger("academy_cairn")
@@ -34,6 +35,8 @@ class RatedHandle:
     async def action(self, name: str, /, *args: Any, **kwargs: Any) -> Any:
         handle = object.__getattribute__(self, "_handle")
         cairn = object.__getattribute__(self, "_cairn")
+        if cairn is None:  # trust disabled / unresolved ⇒ delegate, don't rate
+            return await handle.action(name, *args, **kwargs)
         ref = self._peer_ref()
         weight = cairn.config.default_weight
         start = time.monotonic()
@@ -89,5 +92,15 @@ def _identity(handle: Any) -> Any:
     return handle
 
 
-def rated(handle: Any, *, cairn: Any) -> RatedHandle:
+def rated(handle: Any, *, cairn: Any = None, agent: Any = None) -> RatedHandle:
+    """Wrap an Academy Handle so its calls are scored.
+
+    Pass ``cairn=`` with an explicit client, or ``agent=self`` to use (and if
+    needed lazily provision) the calling agent's client — the latter needs no
+    ``CairnAgentMixin``.
+    """
+    if cairn is None and agent is None:
+        raise TypeError("rated() requires either cairn= or agent=")
+    if cairn is None:
+        cairn = ensure_client(agent)
     return RatedHandle(handle, cairn=cairn)

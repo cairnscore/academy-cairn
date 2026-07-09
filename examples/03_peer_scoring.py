@@ -19,7 +19,7 @@ from _demo import academy, bar, reader
 from academy.agent import Agent, action
 from academy.handle import Handle
 
-from academy_cairn import CairnAgentMixin, EntityRef, rated
+from academy_cairn import EntityRef, rated
 
 
 class Analyzer(Agent):
@@ -41,7 +41,7 @@ class FlakyWorker(Agent):
         return f"analysis of {data}"
 
 
-class Coordinator(CairnAgentMixin, Agent):
+class Coordinator(Agent):  # a plain Academy agent
     def __init__(self, analyzer: Handle, worker: Handle) -> None:
         super().__init__()
         self._analyzer = analyzer
@@ -49,8 +49,10 @@ class Coordinator(CairnAgentMixin, Agent):
 
     @action
     async def delegate(self, rounds: int) -> None:
-        analyzer = rated(self._analyzer, cairn=self.cairn)
-        worker = rated(self._worker, cairn=self.cairn)
+        # rated(handle, agent=self) uses (and lazily sets up) this agent's
+        # Cairn client — no mixin required.
+        analyzer = rated(self._analyzer, agent=self)
+        worker = rated(self._worker, agent=self)
         for _ in range(rounds):
             await analyzer.analyze("dataset")  # scored automatically
             try:

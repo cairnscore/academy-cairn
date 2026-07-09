@@ -4,19 +4,13 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
-import socket
 from typing import Any
 
 import httpx
 
 from .client import CairnClient
 from .config import CairnConfig
-from .identity import (
-    KeyStore,
-    agent_name_from,
-    identity_slug,
-    reviewer_external_id,
-)
+from .provision import build_client
 
 logger = logging.getLogger("academy_cairn")
 
@@ -39,18 +33,7 @@ class CairnAgentMixin:
         uid: str,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> CairnClient:
-        reviewer = reviewer_external_id(config.namespace, agent_name_from(name, uid))
-        slug = identity_slug(reviewer)
-        host = socket.gethostname()
-        queue_path = config.key_dir.parent / "queue" / f"{slug}.jsonl"
-        return CairnClient(
-            config,
-            reviewer_id=reviewer,
-            uid=uid,
-            key_store=KeyStore(config.key_dir, host),
-            queue_path=queue_path,
-            transport=transport,
-        )
+        return build_client(config, name=name, uid=uid, transport=transport)
 
     async def agent_on_startup(self) -> None:
         config = self._config()

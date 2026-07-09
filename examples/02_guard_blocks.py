@@ -17,7 +17,6 @@ from _demo import academy, bar, demo_entity, reader
 from academy.agent import Agent, action
 
 from academy_cairn import (
-    CairnAgentMixin,
     CairnTrustError,
     EntityRef,
     TrustPolicy,
@@ -33,7 +32,7 @@ UNKNOWN = demo_entity("brand-new-api")
 STRICT = TrustPolicy(min_score=0.5, min_confidence=0.3, on_low="block")
 
 
-class SeederAgent(CairnAgentMixin, Agent):
+class SeederAgent(Agent):
     """Builds a track record: the reliable source succeeds, the flaky one times out."""
 
     @action
@@ -44,7 +43,7 @@ class SeederAgent(CairnAgentMixin, Agent):
         return "ok"
 
 
-class ResearchAgent(CairnAgentMixin, Agent):
+class ResearchAgent(Agent):
     @action
     @cairn_guarded(type="data_source", id_from="url", policy=STRICT)
     async def query(self, url: str) -> str:

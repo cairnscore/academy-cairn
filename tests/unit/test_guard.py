@@ -142,3 +142,37 @@ async def test_failing_enqueue_does_not_mask_original_exception():
     with pytest.raises(ValueError, match="kaboom"):
         await agent.boom(url="https://a/v1")
     assert len(agent.cairn.enqueued) == 1
+
+
+class LazyAgentId:
+    uid = "lazy1234ef"
+    name = "researcher"
+
+
+class LazyAgent:
+    """A plain Academy-like agent with NO mixin / no self.cairn preset."""
+
+    agent_id = LazyAgentId()
+
+    async def agent_on_shutdown(self) -> None:  # provisioning wraps this
+        pass
+
+    @cairn_guarded(type="data_source", id_from="url")
+    async def fetch(self, url: str) -> str:
+        return "ok"
+
+
+@pytest.mark.asyncio
+async def test_bare_decorator_self_provisions_and_rates(monkeypatch, tmp_path):
+    # No mixin, no self.cairn — the decorator should lazily provision a client
+    # and still enqueue a rating (offline, so no network).
+    monkeypatch.setenv("CAIRN_OFFLINE", "1")
+    monkeypatch.setenv("CAIRN_KEY_DIR", str(tmp_path / "keys"))
+    agent = LazyAgent()
+    assert getattr(agent, "cairn", None) is None
+    assert await agent.fetch(url="https://api.example/v1") == "ok"
+    # a client was provisioned and a rating was queued to disk
+    assert agent.cairn is not None
+    queue_files = list((tmp_path / "queue").glob("*.jsonl"))
+    assert queue_files, "expected a rating written to the offline queue"
+    assert queue_files[0].read_text().strip(), "queue file should be non-empty"

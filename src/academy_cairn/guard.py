@@ -10,6 +10,7 @@ from typing import Any, Awaitable, Callable, Literal
 from pydantic import BaseModel
 
 from .entity import EntityRef, EntityType, Reading
+from .provision import ensure_client
 from .rater import rate_outcome
 
 logger = logging.getLogger("academy_cairn")
@@ -89,7 +90,7 @@ def cairn_guarded(
 
         @functools.wraps(fn)
         async def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
-            cairn = getattr(self, "cairn", None)
+            cairn = getattr(self, "cairn", None) or ensure_client(self)
             ref = (
                 _resolve_ref(type, id_from, sig, self, args, kwargs)
                 if cairn is not None

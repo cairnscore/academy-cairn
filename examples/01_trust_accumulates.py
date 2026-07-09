@@ -5,8 +5,8 @@ record for that source (confidence 0.0 — "no data", not "bad"), so the guard
 just proceeds. Each successful fetch rates the source; after the agent flushes,
 the source's reputation has moved — earned from ground-truth outcomes, no LLM.
 
-The only trust-specific code is the `CairnAgentMixin` base and the one
-`@cairn_guarded` line.
+The only trust-specific code is the one `@cairn_guarded` line — the agent is an
+ordinary Academy agent, and the decorator provisions and flushes Cairn itself.
 
 Run:  CAIRN_NAMESPACE=demo uv run python examples/01_trust_accumulates.py
 """
@@ -18,14 +18,14 @@ import asyncio
 from _demo import academy, bar, demo_entity, reader
 from academy.agent import Agent, action
 
-from academy_cairn import CairnAgentMixin, EntityRef, cairn_guarded
+from academy_cairn import EntityRef, cairn_guarded
 
 WEATHER_API = demo_entity("weather-api")
 
 
-class WeatherAgent(CairnAgentMixin, Agent):
+class WeatherAgent(Agent):  # a completely ordinary Academy agent
     @action
-    @cairn_guarded(type="data_source", id_from="url")
+    @cairn_guarded(type="data_source", id_from="url")  # <-- the only line you add
     async def fetch(self, url: str) -> str:
         # A real agent would hit the network here. The guard checks the
         # source's reputation before this runs and rates it after.

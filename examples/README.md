@@ -22,20 +22,25 @@ mints an API key and caches it under `~/.cairn/academy/keys`.
 
 ## The one thing to notice
 
-In every demo, the *only* trust-specific code is a mixin and one decorator line.
-This is a normal Academy agent:
+In every demo, the *only* trust-specific code is **one decorator line** on an
+otherwise ordinary Academy agent:
 
 ```python
-class WeatherAgent(CairnAgentMixin, Agent):
+class WeatherAgent(Agent):                             # unchanged Academy agent
     @action
-    @cairn_guarded(type="data_source", id_from="url")
+    @cairn_guarded(type="data_source", id_from="url")  # <-- the only line you add
     async def fetch(self, url: str) -> str:
         ...
 ```
 
-`CairnAgentMixin` wires a Cairn client into the agent lifecycle (created on
-startup, flushed on shutdown). `@cairn_guarded` checks the resource's score
-before the action runs and rates the outcome after. That's it.
+`@cairn_guarded` checks the resource's score before the action runs and rates
+the outcome after. On first use it lazily provisions a Cairn client from the
+agent's identity and flushes ratings when the agent shuts down — no base class,
+no setup. (Peer rating is the same idea: `rated(peer_handle, agent=self)`.)
+
+> Prefer explicit wiring, or want a background flusher tuned for a long-lived
+> agent? Add `CairnAgentMixin` to the agent's bases and it owns the client
+> lifecycle instead. It's optional — the decorator works without it.
 
 ---
 
@@ -104,7 +109,7 @@ inspecting the peer's output. Wrapping is a one-liner and identical for a real
 remote handle:
 
 ```python
-analyzer = rated(peer_handle, cairn=self.cairn)
+analyzer = rated(peer_handle, agent=self)
 result = await analyzer.analyze(data)   # transparently scored
 ```
 

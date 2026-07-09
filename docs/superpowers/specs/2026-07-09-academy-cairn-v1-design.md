@@ -282,6 +282,27 @@ serialization round-trip yields a plain working handle.
   concurrent-enqueue loss, a non-functional flush CLI, and a non-injective `identity_slug` — were
   fixed in v1.
 
+## Post-v1 refinement: decorator-first, optional mixin
+
+The original design required `CairnAgentMixin` to supply `self.cairn`, and the
+guard silently no-op'd without it. That made "trust-aware" a two-part change
+(base class + decorator) and turned a bare `@cairn_guarded` into a silent no-op —
+a footgun. Refined so the decorator is self-sufficient:
+
+- New `provision.py` holds the shared `build_client(...)` (moved out of the mixin)
+  plus `ensure_client(agent)`, which returns `agent.cairn` or lazily provisions a
+  client from `agent.agent_id`, caches it on the instance, starts the background
+  flusher, and installs a shutdown flush by wrapping the instance's
+  `agent_on_shutdown` (Academy dispatches that method on the instance, so an
+  instance-level hook is honored).
+- `@cairn_guarded` calls `ensure_client(self)` when `self.cairn` is absent, so a
+  single decorator on an ordinary `Agent` works end-to-end (check → act → rate →
+  flush-on-shutdown). `rated(handle, agent=self)` does the same for peer rating.
+- `CairnAgentMixin` remains as an **optional** explicit alternative (eager client
+  creation + a tunable background flusher), now delegating to `build_client`.
+- The kill switch is unchanged: `CAIRN_ENABLED=0` (or no `agent_id`) makes both
+  the guard and `rated` no-op.
+
 ## Testing & verification strategy
 
 - **Unit:** everything through `httpx.MockTransport`; no network, no Academy runtime needed
