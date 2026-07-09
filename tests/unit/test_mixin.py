@@ -3,6 +3,7 @@ import pytest
 
 from academy_cairn.config import CairnConfig
 from academy_cairn.mixin import CairnAgentMixin
+from academy_cairn.provision import build_client
 
 
 def _handler(req):
@@ -13,8 +14,7 @@ def _handler(req):
 
 @pytest.mark.asyncio
 async def test_build_client_uses_identity(tmp_path):
-    m = CairnAgentMixin()
-    client = m._build_client(
+    client = build_client(
         CairnConfig(namespace="argus", key_dir=tmp_path),
         name="triage", uid="uid00000000",
         transport=httpx.MockTransport(_handler),

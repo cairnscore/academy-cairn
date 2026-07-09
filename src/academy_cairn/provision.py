@@ -73,7 +73,8 @@ def ensure_client(agent: Any) -> CairnClient | None:
     client = build_client(config, name=name, uid=uid)
     try:
         agent.cairn = client  # cache so later calls + getattr find it
-    except Exception:  # object doesn't accept attributes; use it just this call
+    except Exception as exc:  # object doesn't accept attributes; use it once
+        logger.debug("could not cache cairn client on agent: %s", exc)
         return client
     _install_lifecycle(agent, client, config)
     return client
@@ -98,9 +99,11 @@ def _install_lifecycle(agent: Any, client: CairnClient, config: CairnConfig) -> 
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await task
-        with contextlib.suppress(Exception):  # fail-open: never break shutdown
+        try:
             await client.flush()
             await client.aclose()
+        except Exception as exc:  # fail-open: never break shutdown
+            logger.debug("cairn shutdown flush failed: %s", exc)
         if original_shutdown is not None:
             await original_shutdown()
 

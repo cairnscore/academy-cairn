@@ -90,7 +90,7 @@ def cairn_guarded(
 
         @functools.wraps(fn)
         async def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
-            cairn = getattr(self, "cairn", None) or ensure_client(self)
+            cairn = ensure_client(self)
             ref = (
                 _resolve_ref(type, id_from, sig, self, args, kwargs)
                 if cairn is not None

@@ -1,18 +1,19 @@
-"""Mixin that wires a CairnClient into the Academy agent lifecycle."""
+"""Optional mixin that wires a CairnClient into the Academy agent lifecycle.
+
+Not required: ``@cairn_guarded`` and ``rated(...)`` self-provision a client from
+the agent's identity on first use (see ``provision.py``). Use this mixin when you
+want the client created eagerly on startup with a background flusher, rather than
+lazily on first use.
+"""
 from __future__ import annotations
 
 import asyncio
 import contextlib
-import logging
 from typing import Any
-
-import httpx
 
 from .client import CairnClient
 from .config import CairnConfig
-from .provision import build_client
-
-logger = logging.getLogger("academy_cairn")
+from .provision import _flush_loop, build_client
 
 
 class CairnAgentMixin:
@@ -25,38 +26,20 @@ class CairnAgentMixin:
             self._cairn_config = CairnConfig()
         return self._cairn_config
 
-    def _build_client(
-        self,
-        config: CairnConfig,
-        *,
-        name: str | None,
-        uid: str,
-        transport: httpx.AsyncBaseTransport | None = None,
-    ) -> CairnClient:
-        return build_client(config, name=name, uid=uid, transport=transport)
-
     async def agent_on_startup(self) -> None:
         config = self._config()
         if config.enabled:
             agent_id = getattr(self, "agent_id", None)
             name = getattr(agent_id, "name", None)
             uid = str(getattr(agent_id, "uid", "00000000"))
-            self.cairn = self._build_client(config, name=name, uid=uid)
+            self.cairn = build_client(config, name=name, uid=uid)
             if not config.offline:
-                self._cairn_flush_task = asyncio.create_task(self._flush_loop())
+                self._cairn_flush_task = asyncio.create_task(
+                    _flush_loop(self.cairn, config.flush_interval_s),
+                )
         parent_startup = getattr(super(), "agent_on_startup", None)
         if parent_startup is not None:
             await parent_startup()
-
-    async def _flush_loop(self) -> None:
-        assert self.cairn is not None
-        interval = self._config().flush_interval_s
-        try:
-            while True:
-                await asyncio.sleep(interval)
-                await self.cairn.flush()
-        except asyncio.CancelledError:
-            pass
 
     async def agent_on_shutdown(self) -> None:
         if self._cairn_flush_task is not None:
