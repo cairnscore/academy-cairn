@@ -125,7 +125,13 @@ result = await analyzer.analyze(data)   # transparently scored
 ## Notebook
 
 `examples/demo.ipynb` runs the same three scenarios cell-by-cell — handy for
-walking an audience through it live.
+walking an audience through it live. It needs the `notebook` extra, and it
+imports `_demo`, so launch it from this directory:
+
+```bash
+uv sync --extra notebook
+cd examples && uv run jupyter lab demo.ipynb
+```
 
 ## Notes for presenting
 
